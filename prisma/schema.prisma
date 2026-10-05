@@ -1,0 +1,290 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────── ENUMS ───────────────
+
+enum Role {
+  ADMIN
+  STAFF
+}
+
+enum AppointmentStatus {
+  EN_ATTENTE_PAIEMENT
+  CONFIRME
+  ANNULE
+  TERMINE
+  ABSENT
+}
+
+enum PaymentStatus {
+  EN_ATTENTE
+  REUSSI
+  ECHOUE
+  REMBOURSE
+}
+
+enum PaymentPurpose {
+  ACOMPTE_RDV
+  COMMANDE
+}
+
+enum OrderStatus {
+  EN_ATTENTE_PAIEMENT
+  PAYEE
+  EN_PREPARATION
+  PRETE
+  EXPEDIEE
+  LIVREE
+  ANNULEE
+}
+
+enum DeliveryMode {
+  RETRAIT_SALON
+  LIVRAISON
+}
+
+// ─────────────── UTILISATEURS ───────────────
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(STAFF)
+  stylist      Stylist?
+  createdAt    DateTime @default(now())
+}
+
+model Customer {
+  id           String        @id @default(cuid())
+  fullName     String
+  phone        String        @unique
+  email        String?
+  notes        String?
+  appointments Appointment[]
+  orders       Order[]
+  createdAt    DateTime      @default(now())
+}
+
+// ─────────────── PRESTATIONS ───────────────
+
+model ServiceCategory {
+  id       String    @id @default(cuid())
+  name     String
+  slug     String    @unique
+  position Int       @default(0)
+  services Service[]
+}
+
+model Service {
+  id            String           @id @default(cuid())
+  name          String
+  slug          String           @unique
+  description   String?
+  price         Int
+  priceFrom     Boolean          @default(false) // affiche "à partir de"
+  durationMin   Int
+  depositAmount Int              @default(0)
+  imageUrl      String?
+  isActive      Boolean          @default(true)
+  categoryId    String
+  category      ServiceCategory  @relation(fields: [categoryId], references: [id])
+  stylists      StylistService[]
+  appointments  Appointment[]
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+}
+
+// ─────────────── ÉQUIPE ───────────────
+
+  model Stylist {
+    id            String           @id @default(cuid())
+    name          String
+    bio           String?
+    photoUrl      String?
+    photoPublicId String?
+    isActive      Boolean          @default(true)
+    userId        String?          @unique
+    user          User?            @relation(fields: [userId], references: [id])
+    services      StylistService[]
+    workingHours  WorkingHour[]
+    timeOffs      TimeOff[]
+    appointments  Appointment[]
+}
+
+model StylistService {
+  stylistId String
+  serviceId String
+  stylist   Stylist @relation(fields: [stylistId], references: [id], onDelete: Cascade)
+  service   Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@id([stylistId, serviceId])
+}
+
+model WorkingHour {
+  id        String  @id @default(cuid())
+  stylistId String
+  stylist   Stylist @relation(fields: [stylistId], references: [id], onDelete: Cascade)
+  dayOfWeek Int // 0 = dimanche … 6 = samedi
+  startTime String // "09:00"
+  endTime   String // "19:00"
+}
+
+model TimeOff {
+  id        String   @id @default(cuid())
+  stylistId String
+  stylist   Stylist  @relation(fields: [stylistId], references: [id], onDelete: Cascade)
+  startAt   DateTime
+  endAt     DateTime
+  reason    String?
+}
+
+// ─────────────── RENDEZ-VOUS ───────────────
+
+model Appointment {
+  id             String            @id @default(cuid())
+  reference      String            @unique
+  customerId     String
+  customer       Customer          @relation(fields: [customerId], references: [id])
+  serviceId      String
+  service        Service           @relation(fields: [serviceId], references: [id])
+  stylistId      String
+  stylist        Stylist           @relation(fields: [stylistId], references: [id])
+  startAt        DateTime
+  endAt          DateTime
+  status         AppointmentStatus @default(EN_ATTENTE_PAIEMENT)
+  priceAtBooking Int
+  depositAmount  Int
+  notes          String?
+  payments       Payment[]
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@index([stylistId, startAt])
+}
+
+// ─────────────── BOUTIQUE ───────────────
+
+model ProductCategory {
+  id       String    @id @default(cuid())
+  name     String
+  slug     String    @unique
+  position Int       @default(0)
+  products Product[]
+}
+
+model Product {
+  id             String           @id @default(cuid())
+  name           String
+  slug           String           @unique
+  description    String?
+  price          Int
+  compareAtPrice Int? // ancien prix barré
+  stock          Int              @default(0)
+  isActive       Boolean          @default(true)
+  isFeatured     Boolean          @default(false)
+  categoryId     String?
+  category       ProductCategory? @relation(fields: [categoryId], references: [id])
+  images         ProductImage[]
+  orderItems     OrderItem[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
+  url       String
+  publicId  String // identifiant Cloudinary, pour la suppression
+  position  Int     @default(0)
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model Order {
+  id              String       @id @default(cuid())
+  reference       String       @unique
+  customerId      String
+  customer        Customer     @relation(fields: [customerId], references: [id])
+  status          OrderStatus  @default(EN_ATTENTE_PAIEMENT)
+  deliveryMode    DeliveryMode @default(RETRAIT_SALON)
+  deliveryAddress String?
+  deliveryFee     Int          @default(0)
+  subtotal        Int
+  total           Int
+  stockDeducted   Boolean      @default(false)
+  items           OrderItem[]
+  payments        Payment[]
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+}
+
+model OrderItem {
+  id          String  @id @default(cuid())
+  orderId     String
+  order       Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product @relation(fields: [productId], references: [id])
+  productName String // copie figée au moment de la commande
+  unitPrice   Int
+  quantity    Int
+}
+
+// ─────────────── PAIEMENTS ───────────────
+
+model Payment {
+  id            String         @id @default(cuid())
+  purpose       PaymentPurpose
+  provider      String // "cinetpay", "paydunya", "especes"...
+  amount        Int
+  status        PaymentStatus  @default(EN_ATTENTE)
+  transactionId String         @unique
+  providerRef   String?
+  rawPayload    Json?
+  appointmentId String?
+  appointment   Appointment?   @relation(fields: [appointmentId], references: [id])
+  orderId       String?
+  order         Order?         @relation(fields: [orderId], references: [id])
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+// ─────────────── VITRINE ───────────────
+
+model GalleryImage {
+  id        String   @id @default(cuid())
+  url       String
+  publicId  String
+  caption   String?
+  category  String?
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  authorName String
+  rating     Int // 1 à 5
+  comment    String
+  isApproved Boolean  @default(false)
+  createdAt  DateTime @default(now())
+}
+
+model SalonSettings {
+  id           Int     @id @default(1)
+  name         String  @default("Royalty Beauty")
+  phone        String?
+  whatsapp     String?
+  email        String?
+  address      String?
+  mapsUrl      String?
+  instagram    String?
+  facebook     String?
+  tiktok       String?
+  openingHours Json?
+}

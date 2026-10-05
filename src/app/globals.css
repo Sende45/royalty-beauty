@@ -1,0 +1,113 @@
+@import "tailwindcss";
+
+/* Noms des polices fournies par Fontsource */
+:root {
+  --font-cinzel: "Cinzel Variable", "Cinzel", Georgia, serif;
+  --font-cormorant: "Cormorant Garamond", Georgia, serif;
+  --font-montserrat: "Montserrat Variable", "Montserrat", system-ui, sans-serif;
+}
+
+@theme {
+  /* Point de rupture pour les écrans de 360 px et plus */
+  --breakpoint-xs: 22.5rem;
+
+  /* Mode Soleil : violet et or rose */
+  --color-prune: #6e5476;
+  --color-prune-dark: #4e3a55;
+  --color-prune-light: #efe8f0;
+  --color-or: #c9927e;
+  --color-or-dark: #a9735f;
+  --color-or-light: #f3e4dd;
+  --color-ivoire: #faf7f4;
+  --color-encre: #3d3842;
+}
+
+@theme inline {
+  --font-display: var(--font-cinzel);
+  --font-serif: var(--font-cormorant);
+  --font-sans: var(--font-montserrat);
+}
+
+/* ───── Mode Lune : noir et or (site public uniquement) ───── */
+html[data-theme="dark"] .site-theme {
+  color-scheme: dark;
+  --color-ivoire: #0e0c0f; /* fond de page */
+  --color-white: #18151a; /* cartes et sections */
+  --color-encre: #efe7e1; /* texte */
+  --color-prune: #c9927e; /* boutons et bandeaux : or */
+  --color-prune-dark: #a9735f;
+  --color-prune-light: #211c23; /* sections teintées */
+  --color-or: #d4a28d;
+  --color-or-dark: #dcae99; /* petits titres dorés, plus lumineux sur fond noir */
+  --color-or-light: #2a211d;
+}
+
+html[data-theme="dark"] body {
+  background-color: #0e0c0f;
+}
+
+/* Boutons posés sur un bandeau doré : on les passe en noir pour qu'ils ressortent */
+html[data-theme="dark"] .site-theme .bg-prune .btn-primary {
+  background-color: #0e0c0f !important;
+  color: #d4a28d !important;
+}
+
+/* Transition douce au changement de thème */
+html.theme-transition .site-theme,
+html.theme-transition .site-theme * {
+  transition:
+    background-color 0.4s ease,
+    color 0.4s ease,
+    border-color 0.4s ease !important;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background-color: var(--color-ivoire);
+  color: var(--color-encre);
+  font-family: var(--font-montserrat);
+  /* Empêche tout défilement horizontal parasite sans casser les éléments "sticky" */
+  overflow-x: clip;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Évite le zoom automatique de Safari iOS quand on touche un champ */
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+/* Respecte le réglage "réduire les animations" du téléphone */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@layer components {
+  .eyebrow {
+    @apply text-xs uppercase tracking-[0.35em] text-or-dark;
+  }
+  .section-title {
+    @apply font-display text-3xl md:text-4xl text-encre;
+  }
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-prune px-7 py-3 text-sm font-medium uppercase tracking-widest text-ivoire transition hover:bg-prune-dark;
+  }
+  .btn-outline {
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-or px-7 py-3 text-sm font-medium uppercase tracking-widest text-or-dark transition hover:bg-or hover:text-ivoire;
+  }
+  .photo-placeholder {
+    background: linear-gradient(135deg, var(--color-prune-light), var(--color-or-light));
+  }
+}
